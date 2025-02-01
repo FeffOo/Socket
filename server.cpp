@@ -1,9 +1,10 @@
 #include "res/common.h"
 
-int serverSocket = socket(AF_INET, SOCK_STREAM, 0);
+
 
 int main(){
-
+    
+    serverSocket = socket(AF_INET, SOCK_STREAM, 0);
     serverAddress.sin_family = AF_INET;
     serverAddress.sin_port = htons(DEFAULT_PORT);
     serverAddress.sin_addr.s_addr = INADDR_ANY;

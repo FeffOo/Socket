@@ -1,4 +1,4 @@
-#include "common.h"
+#include "res/common.h"
 
 int main(){
     int clientSocket = socket(AF_INET, SOCK_STREAM, 0);
