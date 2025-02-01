@@ -1,5 +1,6 @@
 #pragma once
 #include <iostream>
+#include <cstring>
 #include <unistd.h>
 
 #ifdef _WIN32
@@ -16,7 +17,7 @@ using namespace std;
 
 #define ESCAPE_KEY 27 // ESC key
 
-sockaddr_in serverAddress;
+struct sockaddr_in serverAddress;
 
 int clientSocket;
 int serverSocket;
