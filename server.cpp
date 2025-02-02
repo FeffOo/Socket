@@ -2,27 +2,31 @@
 
 
 
-int main(){
+int main(int argc, char *argv[]){
     
     serverSocket = socket(AF_INET, SOCK_STREAM, 0);
     serverAddress.sin_family = AF_INET;
     serverAddress.sin_port = htons(DEFAULT_PORT);
     serverAddress.sin_addr.s_addr = INADDR_ANY;
 
-     bind(serverSocket, (struct sockaddr*)&serverAddress,sizeof(serverAddress));
+    bind(serverSocket, (struct sockaddr*)&serverAddress,sizeof(serverAddress));
 
-    // listening to the assigned socket
     listen(serverSocket, 5);
+    
+    clientSocket = accept(serverSocket, nullptr, nullptr);
 
-    // accepting connection request
-    int clientSocket = accept(serverSocket, nullptr, nullptr);
+    do{
+        recv(clientSocket, message, sizeof(message), 0);
 
-    // recieving data
-    char buffer[DEFAULT_BUFFER_SIZE] = { 0 };
-    recv(clientSocket, buffer, sizeof(buffer), 0);
-    cout << "Message from client: " << buffer << endl;
+        if(message[0] != '\n' || message[0] != '0'){
+            cout << "Message from client: " << message;
+            memset(message , 0, sizeof(message)); //clear the entire string
+        }else{
+            cout << "ERROR";
+        }
+    
+    }while(errno == 0);
 
-    // closing the socket.
     close(serverSocket);
 
 
