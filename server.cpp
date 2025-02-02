@@ -15,17 +15,14 @@ int main(int argc, char *argv[]){
     
     clientSocket = accept(serverSocket, nullptr, nullptr);
 
-    do{
-        recv(clientSocket, message, sizeof(message), 0);
-
+    while(recv(clientSocket, message, sizeof(message), 0) != 0){
         if(message[0] != '\n' || message[0] != '0'){
             cout << "Message from client: " << message;
             memset(message , 0, sizeof(message)); //clear the entire string
         }else{
             cout << "ERROR";
         }
-    
-    }while(errno == 0);
+    }
 
     close(serverSocket);
 
