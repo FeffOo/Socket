@@ -11,8 +11,13 @@ int main(int argc, char *argv[]){
 
     bind(serverSocket, (struct sockaddr*)&serverAddress,sizeof(serverAddress));
 
-    listen(serverSocket, 5);
-    
+    tempError = listen(serverSocket, 5);
+    if(tempError == -1){
+        cout<<"Error while listening. Error N:"<<errno<<endl;
+    }else{
+        cout<<"Socket is now listening."<<endl;
+    }
+
     clientSocket = accept(serverSocket, nullptr, nullptr);
 
     while(recv(clientSocket, message, sizeof(message), 0) != 0){
@@ -20,7 +25,7 @@ int main(int argc, char *argv[]){
             cout << "Message from client: " << message;
             memset(message , 0, sizeof(message)); //clear the entire string
         }else{
-            cout << "ERROR";
+            cout << "Error reciving the message";
         }
     }
 
