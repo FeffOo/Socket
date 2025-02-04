@@ -26,6 +26,7 @@
         "system_error": "cpp",
         "typeinfo": "cpp",
         "string": "cpp",
-        "chrono": "cpp"
+        "chrono": "cpp",
+        "ostream": "cpp"
     }
 }
