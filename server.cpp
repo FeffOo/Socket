@@ -3,12 +3,17 @@
 //Il suo compito principale è stampare i dati della riga, mostrando i nomi delle colonne e i valori associati.
 static int callback(void* data, int argc, char** argv, char** azColName);
 
-const char TABLE_INIT[] = "CREATE TABLE users( id_user INT NOT NULL PRIMARY KEY AUTO_INCREMENT, username CHAR(16), passwd CHAR(16) NOT NULL);";
-char UserCheck[] = "FROM users SELECT * WHERE username";
+const char TABLE_INIT[] = "CREATE TABLE users( id_user INT NOT NULL PRIMARY KEY AUTO_INCREMENT, username CHAR(16) NOT NULL, passwd CHAR(16) NOT NULL, islogin BOOLEAN NOT NULL DEFAULT 0);";
+
+//QUERY
+string UPDATE_USER_STATUS = "UPDATE users SET islogin = 0 WHERE id_users = ?;";
+string UsernameCheck = "SELECT COUNT(*) FROM users WHERE username = ?;";
+string PasswdCheck = "SELECT COUNT(*) FROM passwd WHERE passwd = ?;";
 
 int main(int argc, char *argv[]){
     
     sqlite3 *db;
+    sqlite3_stmt* stmt;
 
     int tempError;
 
@@ -36,10 +41,39 @@ int main(int argc, char *argv[]){
     }
 
     clientSocket = accept(serverSocket, nullptr, nullptr);
-    if(isUserLogIn == false){
+
+    //LOGIN
+    if(sqlite3_prepare_v2(db, UsernameCheck.c_str(), -1, &stmt, nullptr) == SQLITE_OK ){ 
+        //USERNAME CHECK
+        string tempString = message;
         recv(clientSocket, message, sizeof(message), 0);
-        sqlite3_exec(db, (const char *)strcat(UserCheck, message), callback, NULL, NULL);
+        sqlite3_bind_text(stmt, 1, tempString.c_str(), -1,  SQLITE_STATIC);
+
+        if(sqlite3_step(stmt) == SQLITE_ROW &&
+            sqlite3_prepare_v2(db, PasswdCheck.c_str(), -1, &stmt, nullptr) == SQLITE_OK ){
+            //PASSWD CHECK
+            recv(clientSocket, message, sizeof(message), 0);
+            sqlite3_bind_text(stmt, 1, tempString.c_str(), -1,  SQLITE_STATIC);
+            
+            if(sqlite3_step(stmt) == SQLITE_ROW){
+                //SET STATUS login = true to the user
+                isUserLogIn = true;
+                sqlite3_bind_text(stmt, 1, to_string(isUserLogIn).c_str(), -1, SQLITE_STATIC);   
+                sqlite3_step(stmt);
+            }else{
+                cout<<"[PASSWD]An error as occured:"<<sqlite3_errmsg(db)<<endl;
+                return EXIT_FAILURE;
+            }
+        }else{
+            cout<<"[USER]An error as occured:"<<sqlite3_errmsg(db)<<endl;
+            return EXIT_FAILURE;
+        }    
+    }else{
+        cout<<"[QUERY]An Error as occured"<<sqlite3_errmsg(db)<<endl;
+        return EXIT_FAILURE;
     }
+
+    //COMMUNITCATION LOOP
     while(recv(clientSocket, message, sizeof(message), 0) != 0){
         if(message[0] != '\n' || message[0] != '0'){
             cout << "Message from client: " << message;
@@ -51,6 +85,7 @@ int main(int argc, char *argv[]){
 
     close(serverSocket);
     sqlite3_close(db);
+    sqlite3_finalize(stmt);
 
     return EXIT_SUCCESS;
 }
