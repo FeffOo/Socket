@@ -18,11 +18,13 @@
 #ifdef _WIN32
     #include <Winsock.h>
 #else
+    #include <arpa/inet.h>
     #include <netinet/in.h>
     #include <sys/socket.h>
 #endif
 
 #define DEFAULT_PORT 6969
+#define DEFAULT_N_CONN 5 //NUMBER OF USER CONNECTED
 #define DEFAULT_BUFFER_SIZE 1024
 
 #define MAX_USERNAME_LENGHT 16

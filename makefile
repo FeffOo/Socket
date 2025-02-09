@@ -1,8 +1,7 @@
 CC      = g++
 CFLAGS  = -g
-CLIBFLAGS = -lsqlite3
-RM      = rm -f
-
+SERVERFLAGS     = -lsqlite3
+RM      = rm -rf
 
 default: all
 
@@ -11,8 +10,8 @@ all: client server
 client: client.cpp
 	$(CC) $(CFLAGS) -o client client.cpp
 
-server: server.cpp
-	$(CC) $(CFLAGS) -o server server.cpp $(CLIBFLAGS)
+server:server.cpp
+	$(CC) $(CFLAGSs) -o server server.cpp $(SERVERFLAGS)
 
 clean veryclean:
 	$(RM) server
