@@ -5,15 +5,23 @@
 #include "res/sqlquerys.h"
 #include <sqlite3.h>
 
+static void closeServer();
+static void srvSQLQueryMenu(void *);
 static void clientListen(int clientSocket);
-static void SQLQueryMenu(void *);
 
 static int callback(void* data, int argc, char** argv, char** azColName);
+
+sqlite3 *db;
+sqlite3_stmt *stmt;
 
 int main(int argc, char* argv[]){
 
     ThreadPool Client_Thread(DEFAULT_N_CONN + 2);
-    Client_Thread.enqueue(SQLQueryMenu, nullptr);
+    Client_Thread.enqueue(srvSQLQueryMenu, nullptr);
+
+    if(sqlite3_open(dbLocalPath, &db) != SQLITE_OK){
+        perror("DB Error");
+    }
 
     serverSocket = socket(AF_INET, SOCK_STREAM, 0);
     setsockopt(serverSocket, SOL_SOCKET, SO_REUSEADDR, message, sizeof(message));
@@ -38,15 +46,33 @@ int main(int argc, char* argv[]){
     
 
     if((clientSocket = accept(serverSocket, (struct sockaddr*)&serverAddress, &srvAddrSize)) < 0){
-        perror("Errore nella accettazione");
+        cerr<<"Errore nella accettazione del Socket";
+        closeServer();
         return EXIT_FAILURE;
     }
 
-    cout<<"Connessione Effettuata"<<endl;
-    Client_Thread.enqueue(clientListen, clientSocket);
+    //ACCESSO
+    if(sqlite3_prepare_v2(db, UsersLoginCredentials, -1, &stmt, nullptr) != SQLITE_OK){
+        cerr<<"Errore nella iniz. della query UsernameCheck:"<<sqlite3_errmsg(db);
+        closeServer();
+        return EXIT_FAILURE;
+    }
 
+    recv(serverSocket, message, DEFAULT_BUFFER_SIZE, 0);
+    sqlite3_bind_text(stmt, 1, message, -1, SQLITE_STATIC);
+    recv(serverSocket, message, DEFAULT_BUFFER_SIZE, 0);
+    sqlite3_bind_text(stmt, 2, message, -1, SQLITE_STATIC);
+    
+    if(sqlite3_step(stmt) != SQLITE_DONE){
+        cerr<<"Errore nella query"<<sqlite3_errmsg(db);
+    }else{
+        cout<<"Connessione Effettuata"<<endl;
+        Client_Thread.enqueue(clientListen, clientSocket);
+    }
 
+    sqlite3_close(db);
     close(serverSocket);
+
     return EXIT_SUCCESS;
 }
 
@@ -63,13 +89,14 @@ static void clientListen(int clientSocket){
     }
 }
 
-static void SQLQueryMenu(void *){
-    sqlite3 *db;
-    sqlite3_stmt *stmt;
+static void closeServer(){
+    sqlite3_close(db);
+    close(serverSocket);
+}
+
+static void srvSQLQueryMenu(void *){
     char serverShell[DEFAULT_BUFFER_SIZE];
-    if(sqlite3_open(dbLocalPath, &db) != SQLITE_OK){
-        perror("DB Error");
-    }
+   
     while(1){
         sqlite3_exec(db, TABLE_INIT, callback, NULL, NULL);
     
@@ -85,6 +112,7 @@ static void SQLQueryMenu(void *){
         memset(serverShell, 0, DEFAULT_BUFFER_SIZE);
     }
 }
+
 
 static int callback(void* data, int argc, char** argv, char** azColName){
     int i;
