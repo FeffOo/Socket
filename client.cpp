@@ -1,14 +1,7 @@
-<<<<<<< HEAD
-#include "res/common.h"
-
-int main(int argc, char *argv[]){
-    UserData user;
-=======
 #include "res/common.cpp"
 
 int main(int argc, char* argv[]){
 
->>>>>>> 947e0af (	new file:   client.cpp)
     clientSocket = socket(AF_INET, SOCK_STREAM, 0);
 
     serverAddress.sin_family = AF_INET;
@@ -27,7 +20,7 @@ int main(int argc, char* argv[]){
                     //HELP MENU SIMILAR TO MAN
                     break;
                 case str2int("!disconnect"):
-                    
+                    send(clientSocket, "!disconnect", strlen(message), 0);
                     break;
 
                 default:
