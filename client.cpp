@@ -10,6 +10,12 @@ int main(int argc, char* argv[]){
 
     connect(clientSocket, (struct sockaddr*)&serverAddress, sizeof(serverAddress));
 
+    cout<<"Insert Username and Password:"<<endl;
+    do{
+        fgets(message, DEFAULT_BUFFER_SIZE, stdin);
+        send(clientSocket, message, strlen(message), 0);
+    }while(recv(clientSocket, message, 1, 0) == true);
+
     while(1){
         fgets(message, DEFAULT_BUFFER_SIZE, stdin);
         if(message[0] != '\n' && message[0] != '!'){

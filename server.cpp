@@ -8,6 +8,7 @@
 static void closeServer();
 static void srvSQLQueryMenu(void *);
 static void clientListen(int clientSocket);
+static void usrRegistr(const char* usr, const char* pswd, void*);
 
 static int callback(void* data, int argc, char** argv, char** azColName);
 
@@ -58,17 +59,31 @@ int main(int argc, char* argv[]){
         return EXIT_FAILURE;
     }
 
-    recv(serverSocket, message, DEFAULT_BUFFER_SIZE, 0);
-    sqlite3_bind_text(stmt, 1, message, -1, SQLITE_STATIC);
-    recv(serverSocket, message, DEFAULT_BUFFER_SIZE, 0);
-    sqlite3_bind_text(stmt, 2, message, -1, SQLITE_STATIC);
-    
-    if(sqlite3_step(stmt) != SQLITE_DONE){
-        cerr<<"Errore nella query"<<sqlite3_errmsg(db);
+
+    if(strstr(message, "!register") != NULL && message[0] == '!'){
+        usrRegistr(message, nullptr);
     }else{
-        cout<<"Connessione Effettuata"<<endl;
-        Client_Thread.enqueue(clientListen, clientSocket);
+        do{    
+            recv(serverSocket, message, DEFAULT_BUFFER_SIZE, 0);
+            sqlite3_bind_text(stmt, 1, message, -1, SQLITE_STATIC);
+            recv(serverSocket, message, DEFAULT_BUFFER_SIZE, 0);
+            sqlite3_bind_text(stmt, 2, message, -1, SQLITE_STATIC);
+
+            if(sqlite3_step(stmt) != SQLITE_DONE){
+                cerr<<"Errore nella query"<<sqlite3_errmsg(db);
+                strcpy(message, "false");
+                send(serverSocket, message, strlen(message), 0);
+            }else 
+                isUserLogIn = true;
+        }while(isUserLogIn = true);
     }
+
+    strcpy(message, "true");
+    send(serverSocket, message, strlen(message), 0);
+    
+    cout<<"Connessione Effettuata"<<endl;
+    Client_Thread.enqueue(clientListen, clientSocket);
+    
 
     sqlite3_close(db);
     close(serverSocket);
@@ -92,6 +107,23 @@ static void clientListen(int clientSocket){
 static void closeServer(){
     sqlite3_close(db);
     close(serverSocket);
+}
+
+static void usrRegistr(char *msg, void*){
+    char* tmpUsrn = strsegm(msg);
+    char* tmpPswd = strsegm(msg);
+    
+    sqlite3_bind_text(stmt, 1, tmpUsrn, -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 1, tmpPswd, -1, SQLITE_STATIC);
+    
+    if(sqlite3_step(stmt) != SQLITE_DONE){
+        cerr<<"Errore nella query"<<sqlite3_errmsg(db);
+        strcpy(message, "false");
+        send(serverSocket, message, strlen(message), 0);
+    }else{
+        sqlite3_exec(db, UserRegistr, callback, nullptr, nullptr); //TODO
+    }
+
 }
 
 static void srvSQLQueryMenu(void *){
