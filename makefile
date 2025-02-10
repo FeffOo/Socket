@@ -1,6 +1,6 @@
 CC      = g++
 CFLAGS  = -g
-SERVERFLAGS     = -lsqlite3
+SERVERFLAGS     = -lsqlite3 -Llsqlquerys.h -LlThreadPool.cpp
 RM      = rm -rf
 
 default: all

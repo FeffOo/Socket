@@ -5,10 +5,12 @@
 #include "res/sqlquerys.h"
 #include <sqlite3.h>
 
+#define DEFAULT_SHELL_BUFFER 128
+
 static void closeServer();
-static void srvSQLQueryMenu(void *);
 static void clientListen(int clientSocket);
-static void usrRegistr(const char* usr, const char* pswd, void*);
+static void usrRegistr(char* usr);
+static void* srvShell(void *);
 
 static int callback(void* data, int argc, char** argv, char** azColName);
 
@@ -18,11 +20,12 @@ sqlite3_stmt *stmt;
 int main(int argc, char* argv[]){
 
     ThreadPool Client_Thread(DEFAULT_N_CONN + 2);
-    Client_Thread.enqueue(srvSQLQueryMenu, nullptr);
+    Client_Thread.enqueue(srvShell, nullptr);
 
     if(sqlite3_open(dbLocalPath, &db) != SQLITE_OK){
         perror("DB Error");
     }
+    sqlite3_exec(db, TABLE_INIT, callback, 0, 0);
 
     serverSocket = socket(AF_INET, SOCK_STREAM, 0);
     setsockopt(serverSocket, SOL_SOCKET, SO_REUSEADDR, message, sizeof(message));
@@ -53,15 +56,15 @@ int main(int argc, char* argv[]){
     }
 
     //ACCESSO
-    if(sqlite3_prepare_v2(db, UsersLoginCredentials, -1, &stmt, nullptr) != SQLITE_OK){
-        cerr<<"Errore nella iniz. della query UsernameCheck:"<<sqlite3_errmsg(db);
+    if(sqlite3_prepare_v2(db, UserLogCrd, -1, &stmt, nullptr) != SQLITE_OK){
+        cerr<<"Errore nella iniz. della query UserLogCrd:"<<sqlite3_errmsg(db);
         closeServer();
         return EXIT_FAILURE;
     }
 
 
     if(strstr(message, "!register") != NULL && message[0] == '!'){
-        usrRegistr(message, nullptr);
+        usrRegistr(message);
     }else{
         do{    
             recv(serverSocket, message, DEFAULT_BUFFER_SIZE, 0);
@@ -109,40 +112,45 @@ static void closeServer(){
     close(serverSocket);
 }
 
-static void usrRegistr(char *msg, void*){
+static void usrRegistr(char* msg){
     char* tmpUsrn = strsegm(msg);
     char* tmpPswd = strsegm(msg);
     
     sqlite3_bind_text(stmt, 1, tmpUsrn, -1, SQLITE_STATIC);
-    sqlite3_bind_text(stmt, 1, tmpPswd, -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 2, tmpPswd, -1, SQLITE_STATIC);
     
     if(sqlite3_step(stmt) != SQLITE_DONE){
         cerr<<"Errore nella query"<<sqlite3_errmsg(db);
         strcpy(message, "false");
         send(serverSocket, message, strlen(message), 0);
-    }else{
-        sqlite3_exec(db, UserRegistr, callback, nullptr, nullptr); //TODO
     }
+
+    memset(tmpUsrn, 0, sizeof(tmpUsrn));
+    memset(tmpPswd, 0, sizeof(tmpPswd));
 
 }
 
-static void srvSQLQueryMenu(void *){
-    char serverShell[DEFAULT_BUFFER_SIZE];
-   
+static void* srvShell(void *){
+    char serverShell[DEFAULT_SHELL_BUFFER];
+
     while(1){
         sqlite3_exec(db, TABLE_INIT, callback, NULL, NULL);
     
         //ADMIN INPUT
         do{
-            fgets(serverShell, DEFAULT_BUFFER_SIZE, stdin);
+            fgets(serverShell, DEFAULT_SHELL_BUFFER, stdin);
         }while(serverShell[0] == '\n');
         switch(str2int(serverShell)){
+            case str2int("!shutdown"):
+                closeServer();
+                return nullptr;
             default:
                 cout<<"Invalid Command"<<endl;
                 break;
         }
-        memset(serverShell, 0, DEFAULT_BUFFER_SIZE);
+        memset(serverShell, 0, DEFAULT_SHELL_BUFFER);
     }
+
 }
 
 

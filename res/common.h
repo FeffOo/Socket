@@ -38,7 +38,7 @@ using uShort8 = uint8_t;
 
 //trasforma una stringa in un numero intero usando un metodo chiamato "hashing
 constexpr unsigned int str2int(const char* str, int h = 0);
-constexpr char* strsegm(char* str);
+extern "C" char* strsegm(char* str);
 
 typedef struct{
     char Username[MAX_USERNAME_LENGHT];
