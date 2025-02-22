@@ -20,18 +20,22 @@ sqlite3_stmt *stmt;
 int main(int argc, char* argv[]){
 
     ThreadPool Client_Thread(DEFAULT_N_CONN + 2);
-    Client_Thread.enqueue(srvShell, nullptr);
 
-    if(sqlite3_open(dbLocalPath, &db) != SQLITE_OK){
-        perror("DB Error");
+    if(sqlite3_open_v2(dbLocalPath, &db, 0, nullptr) == SQLITE_OPEN_READWRITE){
+        cerr<<"ERRORE:"<<sqlite3_errmsg(db);
+        return EXIT_FAILURE;
     }
-    sqlite3_exec(db, TABLE_INIT, callback, 0, 0);
+    if(sqlite3_exec(db, TABLE_INIT, callback, 0, 0) == SQLITE_OPEN_READWRITE){
+        cerr<<"ERRORE:"<<sqlite3_errmsg(db);
+        return EXIT_FAILURE;
+    }
 
     serverSocket = socket(AF_INET, SOCK_STREAM, 0);
     setsockopt(serverSocket, SOL_SOCKET, SO_REUSEADDR, message, sizeof(message));
     
     if(serverSocket == 0){
-        perror("Errore nella creazioen del socket");
+        cerr<<"Errore nella creazioen del socket"<<endl;
+        closeServer();
         return EXIT_FAILURE;
     }
 
@@ -40,7 +44,8 @@ int main(int argc, char* argv[]){
     serverAddress.sin_addr.s_addr = INADDR_ANY;
 
     if(bind(serverSocket, (struct sockaddr*)&serverAddress, sizeof(serverAddress)) < 0){
-        perror("Errore di binding");
+        cerr<<"Errore di Binding"<<endl;
+        closeServer();
         return EXIT_FAILURE;
     }
         
@@ -49,24 +54,21 @@ int main(int argc, char* argv[]){
     socklen_t srvAddrSize = sizeof(serverAddress);
     
 
-    if((clientSocket = accept(serverSocket, (struct sockaddr*)&serverAddress, &srvAddrSize)) < 0){
+    if((serverSocket = accept(serverSocket, (struct sockaddr*)&serverAddress, &srvAddrSize)) < 0){
         cerr<<"Errore nella accettazione del Socket";
         closeServer();
         return EXIT_FAILURE;
     }
 
-    //ACCESSO
-    if(sqlite3_prepare_v2(db, UserLogCrd, -1, &stmt, nullptr) != SQLITE_OK){
-        cerr<<"Errore nella iniz. della query UserLogCrd:"<<sqlite3_errmsg(db);
-        closeServer();
-        return EXIT_FAILURE;
-    }
-
-
-    if(strstr(message, "!register") != NULL && message[0] == '!'){
+    //ACCESSO  
+    recv(serverSocket, message, DEFAULT_BUFFER_SIZE, 0);
+    if(strstr(message, "register") != NULL && message[0] == '!'){
         usrRegistr(message);
-    }else{
-        do{    
+    }else if(strcmp(message, "!login") == 1){
+        do{
+            if(sqlite3_prepare_v2(db, UserLogCrd, -1, &stmt, nullptr) != SQLITE_OPEN_READWRITE){
+                cerr<<"Errore nella iniz. della query UserLogCrd:"<<sqlite3_errmsg(db);
+            }  
             recv(serverSocket, message, DEFAULT_BUFFER_SIZE, 0);
             sqlite3_bind_text(stmt, 1, message, -1, SQLITE_STATIC);
             recv(serverSocket, message, DEFAULT_BUFFER_SIZE, 0);
@@ -99,6 +101,7 @@ static void clientListen(int clientSocket){
         recv(clientSocket, message, sizeof(message), 0);
         if(strlen(message) > 0){
             if(strcmp(message, "!disconnect") == true){
+                closeServer();
                 break;
             }
             cout<<"[THREAD:"<<this_thread::get_id()<<"]Client:"<<message;
@@ -119,8 +122,10 @@ static void usrRegistr(char* msg){
     sqlite3_bind_text(stmt, 1, tmpUsrn, -1, SQLITE_STATIC);
     sqlite3_bind_text(stmt, 2, tmpPswd, -1, SQLITE_STATIC);
     
+    cout<<"LOG: usr Registration"<<endl;
+
     if(sqlite3_step(stmt) != SQLITE_DONE){
-        cerr<<"Errore nella query"<<sqlite3_errmsg(db);
+        cerr<<"Errore nella query "<<sqlite3_errmsg(db)<<endl;
         strcpy(message, "false");
         send(serverSocket, message, strlen(message), 0);
     }
@@ -141,7 +146,7 @@ static void* srvShell(void *){
             fgets(serverShell, DEFAULT_SHELL_BUFFER, stdin);
         }while(serverShell[0] == '\n');
         switch(str2int(serverShell)){
-            case str2int("!shutdown"):
+            case str2int("!shutdown\n"):
                 closeServer();
                 return nullptr;
             default:

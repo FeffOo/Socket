@@ -48,7 +48,6 @@ typedef struct{
 struct sockaddr_in serverAddress;
 
 char message[DEFAULT_BUFFER_SIZE] = {0};
-char dbLocalPath[] = {"res/users.db"};
 
 bool isUp;
 bool isUserLogIn;
